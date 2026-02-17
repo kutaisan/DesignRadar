@@ -68,7 +68,7 @@ export class FigmaClient {
             });
 
             if (res.status === 429) {
-                const wait = Math.pow(2, i) * 2000;
+                const wait = Math.pow(2, i) * 60000;
                 console.warn(`⚠️ Figma Rate Limit (429). ${wait / 1000}sn bekleniyor...`);
                 await new Promise(r => setTimeout(r, wait));
                 continue;

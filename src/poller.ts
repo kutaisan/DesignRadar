@@ -3,9 +3,9 @@
  */
 
 import cron from 'node-cron';
-import { FigmaClient } from './figma-client.js';
+import { FigmaClient, type FigmaVersion } from './figma-client.js';
 import { filterFile, toToon, fromToon, type FilteredFile } from './toon-converter.js';
-import { diffSnapshots, formatChangesForLLM } from './differ.js';
+import { diffSnapshots, formatChangesForLLM, figmaNodeLink, type DesignChange } from './differ.js';
 import { AIChangelog } from './ai-changelog.js';
 import { Notifier } from './mattermost.js';
 import { Store } from './store.js';
@@ -44,13 +44,32 @@ export class Poller {
 
         console.log(`   📥 New version detected: ${lastVersion || 'first scan'} → ${metadata.version}`);
 
-        // 2. Fetch full file
+        // 2. Get version author info
+        let author: { name: string; date: string } | undefined;
+        try {
+            const versionsData = await this.figma.getFileVersions(fileKey);
+            const latestVersion = versionsData.versions[0];
+            if (latestVersion) {
+                author = {
+                    name: latestVersion.user.handle,
+                    date: new Date(latestVersion.created_at).toLocaleString('tr-TR'),
+                };
+            }
+        } catch {
+            console.warn('   ⚠️ Versiyon bilgisi alınamadı');
+        }
+
+        // 3. Fetch full file
         const figmaFile = await this.figma.getFile(fileKey);
         const rawJson = JSON.stringify(figmaFile);
         const rawSize = rawJson.length;
-        console.log(`   📄 File: "${figmaFile.name}" (${figmaFile.document.children?.length || 0} pages)`);
+        const pageCount = figmaFile.document.children?.length || 0;
+        console.log(`   📄 File: "${figmaFile.name}" (${pageCount} pages)`);
+        if (author) {
+            console.log(`   👤 Son değişiklik: ${author.name} — ${author.date}`);
+        }
 
-        // 3. Filter & convert to TOON
+        // 4. Filter & convert to TOON
         const filtered = filterFile(figmaFile);
         const filteredJson = JSON.stringify(filtered);
         const toonString = toToon(filtered);
@@ -59,17 +78,14 @@ export class Poller {
 
         // ─── Size & Cost Analysis ───
         const filterReduction = ((rawSize - filteredSize) / rawSize * 100).toFixed(1);
-        // Approximate token count: ~4 chars per token for English/code
         const rawTokens = Math.round(rawSize / 4);
         const filteredTokens = Math.round(filteredSize / 4);
-        const toonTokens = Math.round(toonSize / 4);
 
         console.log(`\n   📊 ── Boyut & Maliyet Analizi ──`);
         console.log(`   📦 Raw Figma JSON:    ${(rawSize / 1024).toFixed(1)} KB  (~${rawTokens.toLocaleString()} token)`);
         console.log(`   🔽 Filtered JSON:     ${(filteredSize / 1024).toFixed(1)} KB  (~${filteredTokens.toLocaleString()} token)  [%${filterReduction} azalma]`);
-        console.log(`   🔽 TOON Encoded:      ${(toonSize / 1024).toFixed(1)} KB  (~${toonTokens.toLocaleString()} token)`);
-        console.log(`   💰 Raw'ı LLM'e göndersek:     ~$${(rawTokens * 0.0000025).toFixed(4)} (GPT-4o-mini input)`);
-        console.log(`   💰 Filtered'ı göndersek:       ~$${(filteredTokens * 0.0000025).toFixed(4)}`);
+        console.log(`   🔽 TOON Encoded:      ${(toonSize / 1024).toFixed(1)} KB`);
+        console.log(`   💰 Raw → LLM:  ~$${(rawTokens * 0.0000025).toFixed(4)}  |  Filtered → LLM:  ~$${(filteredTokens * 0.0000025).toFixed(4)}`);
 
         // ─── Save debug logs ───
         const { mkdirSync, writeFileSync } = await import('fs');
@@ -80,7 +96,7 @@ export class Poller {
         writeFileSync(`${logDir}/3_encoded.toon`, toonString);
         console.log(`   📁 Debug dosyaları: ${logDir}/`);
 
-        // 4. Get previous snapshot for diff
+        // 5. Get previous snapshot for diff
         const prevSnapshot = this.store.getLatestSnapshot(fileKey);
 
         if (!prevSnapshot) {
@@ -90,7 +106,7 @@ export class Poller {
             return { hasChanges: false, changeCount: 0 };
         }
 
-        // 5. Diff with previous
+        // 6. Diff with previous
         const prevFiltered: FilteredFile = JSON.parse(prevSnapshot.filteredJson);
         const changes = diffSnapshots(prevFiltered, filtered);
 
@@ -101,33 +117,88 @@ export class Poller {
             return { hasChanges: false, changeCount: 0 };
         }
 
-        console.log(`\n   🔄 ${changes.length} design change(s) detected:`);
+        // ─── Per-page detailed log ───
+        const byPage = new Map<string, DesignChange[]>();
         for (const c of changes) {
-            const icon = c.kind === 'ADDED' ? '➕' : c.kind === 'REMOVED' ? '➖' : '✏️';
-            console.log(`      ${icon} [${c.page}] ${c.path} → ${c.summary}`);
+            const existing = byPage.get(c.page) || [];
+            existing.push(c);
+            byPage.set(c.page, existing);
+        }
+
+        console.log(`\n   🔄 ${changes.length} design change(s) across ${byPage.size} page(s):\n`);
+
+        for (const [pageName, pageChanges] of byPage) {
+            const pageId = pageChanges[0].pageId;
+            const pageLink = figmaNodeLink(fileKey, pageId);
+            console.log(`   📄 ${pageName} (${pageChanges.length} changes)`);
+            console.log(`      🔗 ${pageLink}`);
+            for (const c of pageChanges) {
+                const icon = c.kind === 'ADDED' ? '➕' : c.kind === 'REMOVED' ? '➖' : '✏️';
+                const nodeLink = figmaNodeLink(fileKey, c.nodeId);
+                console.log(`      ${icon} ${c.path}`);
+                console.log(`         ${c.summary}`);
+                console.log(`         🔗 ${nodeLink}`);
+            }
+            console.log('');
         }
 
         // Save diff details
         const diffForLLM = formatChangesForLLM(changes);
         const diffTokens = Math.round(diffForLLM.length / 4);
         writeFileSync(`${logDir}/4_diff.txt`, diffForLLM);
-        console.log(`\n   📏 LLM'e gönderilen diff: ${diffForLLM.length} char (~${diffTokens} token)`);
-        console.log(`   💰 Diff maliyeti: ~$${(diffTokens * 0.0000025).toFixed(6)} (GPT-4o-mini) / ~$${((diffTokens * 0.075) / 1000000).toFixed(6)} (Gemini Flash)`);
+        console.log(`   📏 LLM'e gönderilen diff: ${diffForLLM.length} char (~${diffTokens} token)`);
         console.log(`   🏆 Raw JSON yerine diff göndererek %${((rawSize - diffForLLM.length) / rawSize * 100).toFixed(1)} tasarruf!`);
 
-        // 6. Generate AI changelog
+        // 7. Generate AI changelog
         console.log(`\n   🤖 Generating changelog...`);
         const changelog = await this.ai.generateChangelog(figmaFile.name, changes);
 
-        // 7. Send notification
-        await this.notifier.send(changelog, figmaFile.name);
+        // 8. Build rich notification with author & links
+        const richChangelog = this.buildRichChangelog(
+            figmaFile.name, fileKey, changelog, changes, byPage, author
+        );
 
-        // 8. Save new snapshot
+        // 9. Send notification
+        await this.notifier.send(richChangelog, figmaFile.name);
+
+        // 10. Save new snapshot
         this.store.saveSnapshot(fileKey, metadata.version, figmaFile.name, toonString, filteredJson);
         this.store.updateTrackedFile(fileKey, figmaFile.name, metadata.version);
         this.store.cleanOldSnapshots(fileKey);
 
         return { hasChanges: true, changeCount: changes.length };
+    }
+
+    /**
+     * Build rich changelog with author, date, per-page sections, and Figma links
+     */
+    private buildRichChangelog(
+        fileName: string,
+        fileKey: string,
+        aiChangelog: string,
+        changes: DesignChange[],
+        byPage: Map<string, DesignChange[]>,
+        author?: { name: string; date: string }
+    ): string {
+        const lines: string[] = [];
+
+        // Header with author
+        if (author) {
+            lines.push(`👤 **${author.name}** — ${author.date}`);
+        }
+        lines.push(`📂 ${byPage.size} sayfa, ${changes.length} değişiklik\n`);
+
+        // AI-generated changelog
+        lines.push(aiChangelog);
+
+        // Per-page Figma links
+        lines.push(`\n🔗 **Figma Linkleri:**`);
+        for (const [pageName, pageChanges] of byPage) {
+            const pageLink = figmaNodeLink(fileKey, pageChanges[0].pageId);
+            lines.push(`  📄 [${pageName}](${pageLink}) — ${pageChanges.length} değişiklik`);
+        }
+
+        return lines.join('\n');
     }
 
     /**

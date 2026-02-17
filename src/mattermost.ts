@@ -39,6 +39,7 @@ export class Notifier {
     }
 
     private async postToMattermost(changelog: string, fileName: string): Promise<void> {
+        // Mattermost supports Markdown, so links will be clickable
         const message = `### 🎯 DesignRadar — ${fileName}\n_${new Date().toLocaleString('tr-TR')}_\n\n${changelog}`;
 
         const maxRetries = 3;

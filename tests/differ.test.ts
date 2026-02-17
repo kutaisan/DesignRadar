@@ -126,6 +126,8 @@ describe('TOON Differ', () => {
                 {
                     kind: 'MODIFIED',
                     page: 'Home Page',
+                    pageId: '0:1',
+                    nodeId: '1:2',
                     path: 'Header / Login Button',
                     property: 'fills',
                     oldValue: [{ color: '#3366E6' }],
@@ -135,6 +137,8 @@ describe('TOON Differ', () => {
                 {
                     kind: 'ADDED',
                     page: 'Home Page',
+                    pageId: '0:1',
+                    nodeId: '9:9',
                     path: 'Header / New Badge',
                     property: 'node',
                     newValue: 'FRAME',
