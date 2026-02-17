@@ -78,7 +78,7 @@ export class FigmaClient {
         // depth=3 is usually enough to capture page > frame > components
         // geometry=paths excluded intentionally (huge, irrelevant)
         return this.request<FigmaFileResponse>(
-            `/files/${fileKey}?geometry=paths&plugin_data=false`
+            `/files/${fileKey}`
         );
     }
 

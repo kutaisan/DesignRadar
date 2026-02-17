@@ -3,7 +3,8 @@
  * Compares two filtered file snapshots and produces structured changes
  */
 
-import { diff as deepDiff, Diff } from 'deep-diff';
+import deepDiffLib from 'deep-diff';
+const deepDiff = deepDiffLib.diff;
 import type { FilteredFile, FilteredPage } from './toon-converter.js';
 
 export type ChangeKind = 'ADDED' | 'REMOVED' | 'MODIFIED';
