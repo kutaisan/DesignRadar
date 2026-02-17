@@ -68,8 +68,22 @@ export class FigmaClient {
             });
 
             if (res.status === 429) {
-                const wait = Math.pow(2, i) * 60000;
-                console.warn(`⚠️ Figma Rate Limit (429). ${wait / 1000}sn bekleniyor...`);
+                // Parse Figma's Retry-After header (seconds)
+                const retryAfter = parseInt(res.headers.get('retry-after') || '0', 10);
+                const planTier = res.headers.get('x-figma-plan-tier') || 'unknown';
+
+                if (retryAfter > 120) {
+                    const hours = (retryAfter / 3600).toFixed(1);
+                    throw new Error(
+                        `\n❌ Figma rate limit! Bekleme süresi: ${hours} saat\n` +
+                        `   Plan: ${planTier} | Retry-After: ${retryAfter}sn\n` +
+                        `   📌 Çözüm: Farklı bir IP deneyin (hotspot) veya Figma Pro'ya geçin.\n` +
+                        `   📌 Webhook moduna geçmek için: OUTPUT_MODE=webhook`
+                    );
+                }
+
+                const wait = Math.max(Math.pow(2, i) * 2000, retryAfter * 1000);
+                console.warn(`⚠️ Figma Rate Limit (429). ${Math.round(wait / 1000)}sn bekleniyor... (plan: ${planTier})`);
                 await new Promise(r => setTimeout(r, wait));
                 continue;
             }
