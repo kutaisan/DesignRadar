@@ -1,0 +1,300 @@
+{
+    "name": "My Figma Design",
+    "lastModified": "2026-02-17T15:00:00Z",
+    "version": "v1",
+    "document": {
+        "id": "0:0",
+        "name": "Document",
+        "type": "DOCUMENT",
+        "children": [
+            {
+                "id": "0:1",
+                "name": "Home Page",
+                "type": "CANVAS",
+                "backgroundColor": {
+                    "r": 1,
+                    "g": 1,
+                    "b": 1,
+                    "a": 1
+                },
+                "children": [
+                    {
+                        "id": "1:1",
+                        "name": "Header",
+                        "type": "FRAME",
+                        "visible": true,
+                        "opacity": 1,
+                        "absoluteBoundingBox": {
+                            "x": 0,
+                            "y": 0,
+                            "width": 1440,
+                            "height": 80
+                        },
+                        "backgroundColor": {
+                            "r": 0.1,
+                            "g": 0.1,
+                            "b": 0.15,
+                            "a": 1
+                        },
+                        "layoutMode": "HORIZONTAL",
+                        "primaryAxisAlignItems": "SPACE_BETWEEN",
+                        "counterAxisAlignItems": "CENTER",
+                        "itemSpacing": 16,
+                        "paddingLeft": 32,
+                        "paddingRight": 32,
+                        "paddingTop": 0,
+                        "paddingBottom": 0,
+                        "blendMode": "PASS_THROUGH",
+                        "constraints": {
+                            "vertical": "TOP",
+                            "horizontal": "LEFT_RIGHT"
+                        },
+                        "exportSettings": [],
+                        "preserveRatio": false,
+                        "fills": [
+                            {
+                                "blendMode": "NORMAL",
+                                "type": "SOLID",
+                                "color": {
+                                    "r": 0.1,
+                                    "g": 0.1,
+                                    "b": 0.15,
+                                    "a": 1
+                                }
+                            }
+                        ],
+                        "strokes": [],
+                        "strokeWeight": 0,
+                        "cornerRadius": 0,
+                        "effects": [],
+                        "children": [
+                            {
+                                "id": "1:2",
+                                "name": "Logo",
+                                "type": "TEXT",
+                                "characters": "DesignRadar",
+                                "style": {
+                                    "fontFamily": "Inter",
+                                    "fontWeight": 700,
+                                    "fontSize": 24,
+                                    "textAlignHorizontal": "LEFT"
+                                },
+                                "fontSize": 24,
+                                "fontFamily": "Inter",
+                                "fontWeight": 700,
+                                "textAlignHorizontal": "LEFT",
+                                "absoluteBoundingBox": {
+                                    "x": 32,
+                                    "y": 24,
+                                    "width": 160,
+                                    "height": 32
+                                },
+                                "fills": [
+                                    {
+                                        "blendMode": "NORMAL",
+                                        "type": "SOLID",
+                                        "color": {
+                                            "r": 1,
+                                            "g": 1,
+                                            "b": 1,
+                                            "a": 1
+                                        }
+                                    }
+                                ],
+                                "visible": true,
+                                "opacity": 1,
+                                "blendMode": "PASS_THROUGH",
+                                "constraints": {
+                                    "vertical": "CENTER",
+                                    "horizontal": "LEFT"
+                                },
+                                "effects": []
+                            },
+                            {
+                                "id": "1:3",
+                                "name": "Login Button",
+                                "type": "RECTANGLE",
+                                "visible": true,
+                                "opacity": 1,
+                                "absoluteBoundingBox": {
+                                    "x": 1240,
+                                    "y": 20,
+                                    "width": 160,
+                                    "height": 40
+                                },
+                                "fills": [
+                                    {
+                                        "blendMode": "NORMAL",
+                                        "type": "SOLID",
+                                        "color": {
+                                            "r": 0.2,
+                                            "g": 0.4,
+                                            "b": 0.9,
+                                            "a": 1
+                                        }
+                                    }
+                                ],
+                                "strokes": [],
+                                "strokeWeight": 0,
+                                "cornerRadius": 8,
+                                "effects": [],
+                                "blendMode": "PASS_THROUGH",
+                                "constraints": {
+                                    "vertical": "CENTER",
+                                    "horizontal": "RIGHT"
+                                },
+                                "exportSettings": [],
+                                "preserveRatio": false
+                            }
+                        ]
+                    },
+                    {
+                        "id": "2:1",
+                        "name": "Hero Section",
+                        "type": "FRAME",
+                        "visible": true,
+                        "opacity": 1,
+                        "absoluteBoundingBox": {
+                            "x": 0,
+                            "y": 80,
+                            "width": 1440,
+                            "height": 600
+                        },
+                        "layoutMode": "VERTICAL",
+                        "primaryAxisAlignItems": "CENTER",
+                        "counterAxisAlignItems": "CENTER",
+                        "itemSpacing": 24,
+                        "paddingTop": 120,
+                        "paddingBottom": 120,
+                        "paddingLeft": 0,
+                        "paddingRight": 0,
+                        "fills": [
+                            {
+                                "blendMode": "NORMAL",
+                                "type": "SOLID",
+                                "color": {
+                                    "r": 0.97,
+                                    "g": 0.97,
+                                    "b": 0.98,
+                                    "a": 1
+                                }
+                            }
+                        ],
+                        "strokes": [],
+                        "strokeWeight": 0,
+                        "cornerRadius": 0,
+                        "effects": [],
+                        "blendMode": "PASS_THROUGH",
+                        "constraints": {
+                            "vertical": "TOP",
+                            "horizontal": "LEFT_RIGHT"
+                        },
+                        "children": [
+                            {
+                                "id": "2:2",
+                                "name": "Hero Title",
+                                "type": "TEXT",
+                                "characters": "Tasarım Değişikliklerini Kaçırmayın",
+                                "fontSize": 48,
+                                "fontFamily": "Inter",
+                                "fontWeight": 700,
+                                "textAlignHorizontal": "CENTER",
+                                "absoluteBoundingBox": {
+                                    "x": 220,
+                                    "y": 200,
+                                    "width": 1000,
+                                    "height": 60
+                                },
+                                "fills": [
+                                    {
+                                        "blendMode": "NORMAL",
+                                        "type": "SOLID",
+                                        "color": {
+                                            "r": 0.1,
+                                            "g": 0.1,
+                                            "b": 0.15,
+                                            "a": 1
+                                        }
+                                    }
+                                ],
+                                "visible": true,
+                                "opacity": 1,
+                                "blendMode": "PASS_THROUGH",
+                                "effects": []
+                            },
+                            {
+                                "id": "2:3",
+                                "name": "Hero Subtitle",
+                                "type": "TEXT",
+                                "characters": "Figma dosyalarınızdaki her değişikliği otomatik takip edin",
+                                "fontSize": 18,
+                                "fontFamily": "Inter",
+                                "fontWeight": 400,
+                                "textAlignHorizontal": "CENTER",
+                                "absoluteBoundingBox": {
+                                    "x": 320,
+                                    "y": 280,
+                                    "width": 800,
+                                    "height": 28
+                                },
+                                "fills": [
+                                    {
+                                        "blendMode": "NORMAL",
+                                        "type": "SOLID",
+                                        "color": {
+                                            "r": 0.4,
+                                            "g": 0.4,
+                                            "b": 0.45,
+                                            "a": 1
+                                        }
+                                    }
+                                ],
+                                "visible": true,
+                                "opacity": 1,
+                                "blendMode": "PASS_THROUGH",
+                                "effects": []
+                            },
+                            {
+                                "id": "2:4",
+                                "name": "CTA Button",
+                                "type": "RECTANGLE",
+                                "visible": true,
+                                "opacity": 1,
+                                "absoluteBoundingBox": {
+                                    "x": 620,
+                                    "y": 340,
+                                    "width": 200,
+                                    "height": 52
+                                },
+                                "fills": [
+                                    {
+                                        "blendMode": "NORMAL",
+                                        "type": "SOLID",
+                                        "color": {
+                                            "r": 0.2,
+                                            "g": 0.4,
+                                            "b": 0.9,
+                                            "a": 1
+                                        }
+                                    }
+                                ],
+                                "strokes": [],
+                                "strokeWeight": 0,
+                                "cornerRadius": 12,
+                                "effects": [],
+                                "blendMode": "PASS_THROUGH",
+                                "constraints": {
+                                    "vertical": "TOP",
+                                    "horizontal": "CENTER"
+                                }
+                            }
+                        ]
+                    }
+                ]
+            }
+        ]
+    },
+    "components": {},
+    "styles": {},
+    "schemaVersion": 0
+}
