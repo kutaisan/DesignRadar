@@ -22,7 +22,7 @@ export class Poller {
     constructor(config: Config) {
         this.config = config;
         this.figma = new FigmaClient(config.figma.token);
-        this.ai = new AIChangelog(config.llm.baseUrl, config.llm.apiKey, config.llm.model);
+        this.ai = new AIChangelog(config.llm.provider, config.llm.apiKey, config.llm.model);
         this.notifier = new Notifier(config.output);
         this.store = new Store(config.dbPath);
     }
@@ -126,7 +126,7 @@ export class Poller {
         console.log(`🚀 DesignRadar started — polling every ${interval} minutes`);
         console.log(`📂 Tracking ${this.config.figma.fileKeys.length} file(s)`);
         console.log(`📤 Output: ${this.config.output.mode}`);
-        console.log(`🤖 LLM: ${this.config.llm.model} @ ${this.config.llm.baseUrl}\n`);
+        console.log(`🤖 LLM: ${this.config.llm.provider} / ${this.config.llm.model}\n`);
 
         // Run immediately on start
         this.pollOnce();

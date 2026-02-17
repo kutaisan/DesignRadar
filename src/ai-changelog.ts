@@ -1,11 +1,13 @@
 /**
  * AI Changelog Generator
- * Uses OpenAI-compatible API to interpret design changes
+ * Modular LLM support: Gemini and OpenAI
  */
 
+import { GoogleGenerativeAI } from '@google/generative-ai';
 import OpenAI from 'openai';
 import type { DesignChange } from './differ.js';
 import { formatChangesForLLM } from './differ.js';
+import type { LLMProvider } from './config.js';
 
 const SYSTEM_PROMPT = `Sen bir tasarım değişikliği analizcisisin. Sana bir Figma dosyasındaki tasarım değişiklikleri verilecek.
 
@@ -30,16 +32,78 @@ Görevin:
 
 Sadece changelog'u döndür, başka açıklama yapma.`;
 
-export class AIChangelog {
+// ─── Provider Interface ───
+
+interface LLMClient {
+    generate(userPrompt: string): Promise<string>;
+}
+
+// ─── Gemini Provider ───
+
+class GeminiClient implements LLMClient {
+    private model;
+
+    constructor(apiKey: string, modelName: string) {
+        const genAI = new GoogleGenerativeAI(apiKey);
+        this.model = genAI.getGenerativeModel({
+            model: modelName,
+            systemInstruction: SYSTEM_PROMPT,
+        });
+    }
+
+    async generate(userPrompt: string): Promise<string> {
+        const result = await this.model.generateContent(userPrompt);
+        return result.response.text();
+    }
+}
+
+// ─── OpenAI Provider ───
+
+class OpenAIClient implements LLMClient {
     private client: OpenAI;
     private model: string;
 
-    constructor(baseUrl: string, apiKey: string, model: string) {
-        this.client = new OpenAI({
-            baseURL: baseUrl,
-            apiKey,
-        });
+    constructor(apiKey: string, model: string) {
+        this.client = new OpenAI({ apiKey });
         this.model = model;
+    }
+
+    async generate(userPrompt: string): Promise<string> {
+        const response = await this.client.chat.completions.create({
+            model: this.model,
+            messages: [
+                { role: 'system', content: SYSTEM_PROMPT },
+                { role: 'user', content: userPrompt },
+            ],
+            temperature: 0.3,
+            max_tokens: 1000,
+        });
+        return response.choices[0]?.message?.content?.trim() || '';
+    }
+}
+
+// ─── Factory ───
+
+function createLLMClient(provider: LLMProvider, apiKey: string, model: string): LLMClient {
+    switch (provider) {
+        case 'gemini':
+            return new GeminiClient(apiKey, model);
+        case 'openai':
+            return new OpenAIClient(apiKey, model);
+        default:
+            throw new Error(`Unknown LLM provider: ${provider}`);
+    }
+}
+
+// ─── Public API ───
+
+export class AIChangelog {
+    private client: LLMClient;
+    private provider: LLMProvider;
+
+    constructor(provider: LLMProvider, apiKey: string, model: string) {
+        this.provider = provider;
+        this.client = createLLMClient(provider, apiKey, model);
     }
 
     async generateChangelog(
@@ -49,24 +113,13 @@ export class AIChangelog {
         if (changes.length === 0) return '';
 
         const diffText = formatChangesForLLM(changes);
+        const userPrompt = `Dosya: "${fileName}"\n\nDeğişiklikler:\n${diffText}`;
 
         try {
-            const response = await this.client.chat.completions.create({
-                model: this.model,
-                messages: [
-                    { role: 'system', content: SYSTEM_PROMPT },
-                    {
-                        role: 'user',
-                        content: `Dosya: "${fileName}"\n\nDeğişiklikler:\n${diffText}`,
-                    },
-                ],
-                temperature: 0.3,
-                max_tokens: 1000,
-            });
-
-            return response.choices[0]?.message?.content?.trim() || fallbackChangelog(fileName, changes);
+            const result = await this.client.generate(userPrompt);
+            return result || fallbackChangelog(fileName, changes);
         } catch (error) {
-            console.error('LLM error, using fallback:', error);
+            console.error(`LLM error (${this.provider}), using fallback:`, error);
             return fallbackChangelog(fileName, changes);
         }
     }
@@ -77,7 +130,6 @@ export class AIChangelog {
 function fallbackChangelog(fileName: string, changes: DesignChange[]): string {
     const lines: string[] = [`📋 **${fileName}** — ${changes.length} değişiklik algılandı`];
 
-    // Group by page
     const byPage = new Map<string, DesignChange[]>();
     for (const c of changes) {
         const existing = byPage.get(c.page) || [];
@@ -87,7 +139,7 @@ function fallbackChangelog(fileName: string, changes: DesignChange[]): string {
 
     for (const [page, pageChanges] of byPage) {
         if (byPage.size > 1) lines.push(`\n**${page}**`);
-        for (const c of pageChanges.slice(0, 20)) { // Cap at 20 per page
+        for (const c of pageChanges.slice(0, 20)) {
             const icon = c.kind === 'ADDED' ? '✨' : c.kind === 'REMOVED' ? '🗑️' : '🔄';
             lines.push(`• ${icon} ${c.path}: ${c.summary}`);
         }
