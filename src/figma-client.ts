@@ -61,25 +61,31 @@ export class FigmaClient {
         this.token = token;
     }
 
-    private async request<T>(path: string): Promise<T> {
-        const res = await fetch(`${this.baseUrl}${path}`, {
-            headers: { 'X-Figma-Token': this.token },
-        });
+    private async request<T>(path: string, retries = 3): Promise<T> {
+        for (let i = 0; i < retries; i++) {
+            const res = await fetch(`${this.baseUrl}${path}`, {
+                headers: { 'X-Figma-Token': this.token },
+            });
 
-        if (!res.ok) {
-            const body = await res.text();
-            throw new Error(`Figma API error ${res.status}: ${body}`);
+            if (res.status === 429) {
+                const wait = Math.pow(2, i) * 2000;
+                console.warn(`⚠️ Figma Rate Limit (429). ${wait / 1000}sn bekleniyor...`);
+                await new Promise(r => setTimeout(r, wait));
+                continue;
+            }
+
+            if (!res.ok) {
+                const body = await res.text();
+                throw new Error(`Figma API error ${res.status}: ${body}`);
+            }
+
+            return res.json() as Promise<T>;
         }
-
-        return res.json() as Promise<T>;
+        throw new Error(`Figma API rate limit exceeded after ${retries} retries`);
     }
 
     async getFile(fileKey: string): Promise<FigmaFileResponse> {
-        // depth=3 is usually enough to capture page > frame > components
-        // geometry=paths excluded intentionally (huge, irrelevant)
-        return this.request<FigmaFileResponse>(
-            `/files/${fileKey}`
-        );
+        return this.request<FigmaFileResponse>(`/files/${fileKey}`);
     }
 
     async getFileVersions(fileKey: string): Promise<{ versions: FigmaVersion[] }> {
@@ -87,12 +93,15 @@ export class FigmaClient {
     }
 
     async getFileMetadata(fileKey: string): Promise<{ name: string; lastModified: string; version: string }> {
-        // Lightweight call - just get metadata without full document
-        const res = await fetch(`${this.baseUrl}/files/${fileKey}?depth=1`, {
-            headers: { 'X-Figma-Token': this.token },
-        });
-        if (!res.ok) throw new Error(`Figma API error ${res.status}`);
-        const data = await res.json() as any;
-        return { name: data.name, lastModified: data.lastModified, version: data.version };
+        // Use versions endpoint - MUCH lighter than files endpoint
+        const data = await this.getFileVersions(fileKey);
+        const latest = data.versions[0];
+        if (!latest) throw new Error("No versions found for file. Make sure the file is not empty.");
+
+        return {
+            name: "Loading...", // Real name will be updated in getFile if version changed
+            lastModified: latest.created_at,
+            version: latest.id
+        };
     }
 }
