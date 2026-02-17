@@ -93,15 +93,14 @@ export class FigmaClient {
     }
 
     async getFileMetadata(fileKey: string): Promise<{ name: string; lastModified: string; version: string }> {
-        // Use versions endpoint - MUCH lighter than files endpoint
-        const data = await this.getFileVersions(fileKey);
-        const latest = data.versions[0];
-        if (!latest) throw new Error("No versions found for file. Make sure the file is not empty.");
+        // Depth 1 is the lightest way to get the latest 'version' and 'lastModified' 
+        // that reflects ANY change in the canvas.
+        const data = await this.request<any>(`/files/${fileKey}?depth=1`);
 
         return {
-            name: "Loading...", // Real name will be updated in getFile if version changed
-            lastModified: latest.created_at,
-            version: latest.id
+            name: data.name,
+            lastModified: data.lastModified,
+            version: data.version
         };
     }
 }
