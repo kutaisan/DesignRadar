@@ -9,6 +9,8 @@
     "start": "node dist/index.js",
     "dev": "tsx src/index.ts",
     "poll-once": "tsx src/poll-once.ts",
+    "webhook": "tsx src/webhook.ts",
+    "webhook:register": "tsx src/webhook-register.ts",
     "test": "vitest run",
     "test:watch": "vitest"
   },

@@ -18,6 +18,7 @@ export interface Config {
     };
     pollIntervalMinutes: number;
     dbPath: string;
+    webhookPasscode?: string;
 }
 
 function requireEnv(key: string): string {
@@ -62,5 +63,6 @@ export function loadConfig(): Config {
         },
         pollIntervalMinutes: parseInt(process.env.POLL_INTERVAL_MINUTES || '5', 10),
         dbPath: process.env.DB_PATH || './design-radar.db',
+        webhookPasscode: process.env.WEBHOOK_PASSCODE,
     };
 }
