@@ -46,20 +46,44 @@ export class Poller {
 
         // 2. Fetch full file
         const figmaFile = await this.figma.getFile(fileKey);
+        const rawJson = JSON.stringify(figmaFile);
+        const rawSize = rawJson.length;
         console.log(`   📄 File: "${figmaFile.name}" (${figmaFile.document.children?.length || 0} pages)`);
 
         // 3. Filter & convert to TOON
         const filtered = filterFile(figmaFile);
-        const toonString = toToon(filtered);
         const filteredJson = JSON.stringify(filtered);
+        const toonString = toToon(filtered);
+        const filteredSize = filteredJson.length;
+        const toonSize = toonString.length;
 
-        console.log(`   🗜️  Filtered: ${(filteredJson.length / 1024).toFixed(1)}KB JSON → ${(toonString.length / 1024).toFixed(1)}KB TOON`);
+        // ─── Size & Cost Analysis ───
+        const filterReduction = ((rawSize - filteredSize) / rawSize * 100).toFixed(1);
+        // Approximate token count: ~4 chars per token for English/code
+        const rawTokens = Math.round(rawSize / 4);
+        const filteredTokens = Math.round(filteredSize / 4);
+        const toonTokens = Math.round(toonSize / 4);
+
+        console.log(`\n   📊 ── Boyut & Maliyet Analizi ──`);
+        console.log(`   📦 Raw Figma JSON:    ${(rawSize / 1024).toFixed(1)} KB  (~${rawTokens.toLocaleString()} token)`);
+        console.log(`   🔽 Filtered JSON:     ${(filteredSize / 1024).toFixed(1)} KB  (~${filteredTokens.toLocaleString()} token)  [%${filterReduction} azalma]`);
+        console.log(`   🔽 TOON Encoded:      ${(toonSize / 1024).toFixed(1)} KB  (~${toonTokens.toLocaleString()} token)`);
+        console.log(`   💰 Raw'ı LLM'e göndersek:     ~$${(rawTokens * 0.0000025).toFixed(4)} (GPT-4o-mini input)`);
+        console.log(`   💰 Filtered'ı göndersek:       ~$${(filteredTokens * 0.0000025).toFixed(4)}`);
+
+        // ─── Save debug logs ───
+        const { mkdirSync, writeFileSync } = await import('fs');
+        const logDir = `./logs/${fileKey}`;
+        mkdirSync(logDir, { recursive: true });
+        writeFileSync(`${logDir}/1_raw_figma.json`, rawJson);
+        writeFileSync(`${logDir}/2_filtered.json`, JSON.stringify(filtered, null, 2));
+        writeFileSync(`${logDir}/3_encoded.toon`, toonString);
+        console.log(`   📁 Debug dosyaları: ${logDir}/`);
 
         // 4. Get previous snapshot for diff
         const prevSnapshot = this.store.getLatestSnapshot(fileKey);
 
         if (!prevSnapshot) {
-            // First scan — save baseline, no diff possible
             console.log(`   📸 First snapshot saved (baseline)`);
             this.store.saveSnapshot(fileKey, metadata.version, figmaFile.name, toonString, filteredJson);
             this.store.updateTrackedFile(fileKey, figmaFile.name, metadata.version);
@@ -77,10 +101,22 @@ export class Poller {
             return { hasChanges: false, changeCount: 0 };
         }
 
-        console.log(`   🔄 ${changes.length} design changes detected`);
+        console.log(`\n   🔄 ${changes.length} design change(s) detected:`);
+        for (const c of changes) {
+            const icon = c.kind === 'ADDED' ? '➕' : c.kind === 'REMOVED' ? '➖' : '✏️';
+            console.log(`      ${icon} [${c.page}] ${c.path} → ${c.summary}`);
+        }
+
+        // Save diff details
+        const diffForLLM = formatChangesForLLM(changes);
+        const diffTokens = Math.round(diffForLLM.length / 4);
+        writeFileSync(`${logDir}/4_diff.txt`, diffForLLM);
+        console.log(`\n   📏 LLM'e gönderilen diff: ${diffForLLM.length} char (~${diffTokens} token)`);
+        console.log(`   💰 Diff maliyeti: ~$${(diffTokens * 0.0000025).toFixed(6)} (GPT-4o-mini) / ~$${((diffTokens * 0.075) / 1000000).toFixed(6)} (Gemini Flash)`);
+        console.log(`   🏆 Raw JSON yerine diff göndererek %${((rawSize - diffForLLM.length) / rawSize * 100).toFixed(1)} tasarruf!`);
 
         // 6. Generate AI changelog
-        console.log(`   🤖 Generating changelog...`);
+        console.log(`\n   🤖 Generating changelog...`);
         const changelog = await this.ai.generateChangelog(figmaFile.name, changes);
 
         // 7. Send notification
